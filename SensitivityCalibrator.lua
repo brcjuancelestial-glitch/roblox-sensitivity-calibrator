@@ -31,63 +31,11 @@ local state = {
     previousYaw = nil,
     previousPitch = nil,
     
-    measurement = nil,  -- { mouseDistance, cameraDegrees, response }
+    measurement = nil,
 }
 
--- Referências à UI
 local gui = nil
 local info = nil
-
-------------------------------------------------------------
--- CRIAR GUI
-------------------------------------------------------------
-
-local function createGui()
-    if gui then return end
-    
-    gui = Instance.new("ScreenGui")
-    gui.Name = "SensitivityCalibrator"
-    gui.ResetOnSpawn = false
-    gui.Parent = player:WaitForChild("PlayerGui")
-
-    local frame = Instance.new("Frame")
-    frame.Name = "Main"
-    frame.Size = UDim2.fromOffset(380, 220)
-    frame.Position = UDim2.new(0, 20, 0.5, -110)
-    frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-    frame.BackgroundTransparency = 0.08
-    frame.BorderSizePixel = 0
-    frame.Parent = gui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 36)
-    title.Position = UDim2.fromOffset(10, 10)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "SENSITIVITY METER"
-    title.Parent = frame
-
-    info = Instance.new("TextLabel")
-    info.Name = "Info"
-    info.Size = UDim2.new(1, -20, 1, -56)
-    info.Position = UDim2.fromOffset(10, 50)
-    info.BackgroundTransparency = 1
-    info.Font = Enum.Font.GothamMono
-    info.TextSize = 13
-    info.TextColor3 = Color3.fromRGB(220, 220, 225)
-    info.TextXAlignment = Enum.TextXAlignment.Left
-    info.TextYAlignment = Enum.TextYAlignment.Top
-    info.TextWrapped = true
-    info.Parent = frame
-    
-    updateDisplay()
-end
 
 ------------------------------------------------------------
 -- UTILITÁRIOS
@@ -136,32 +84,65 @@ local function updateDisplay()
     
     if state.measurement then
         info.Text = string.format(
-            [[
-Mouse:       %.0f px
-Câmera:      %.1f°
-Resposta:    %.6f °/px
-
-F6 = nova medição
-F8 = limpar
-
-Anote este valor e compare
-com outros jogos.
-]],
+            "Mouse:       %.0f px\nCâmera:      %.1f°\nResposta:    %.6f °/px\n\nF6 = nova medição\nF8 = limpar\n\nAnote e compare com outros jogos.",
             state.measurement.mouseDistance,
             state.measurement.cameraDegrees,
             state.measurement.response
         )
     else
-        info.Text = [[
-Aguardando medição...
-
-F6 = iniciar medição
-
-Mova o mouse suavemente
-por 2 segundos durante
-a medição.
-]]
+        info.Text = "Aguardando medição...\n\nF6 = iniciar medição\n\nMova o mouse suavemente\npor 2 segundos."
     end
+end
+
+------------------------------------------------------------
+-- CRIAR GUI
+------------------------------------------------------------
+
+local function createGui()
+    if gui then return end
+    
+    gui = Instance.new("ScreenGui")
+    gui.Name = "SensitivityCalibrator"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Name = "Main"
+    frame.Size = UDim2.fromOffset(380, 240)
+    frame.Position = UDim2.new(0, 20, 0.5, -120)
+    frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    frame.BackgroundTransparency = 0.08
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 36)
+    title.Position = UDim2.fromOffset(10, 10)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = "SENSITIVITY METER"
+    title.Parent = frame
+
+    info = Instance.new("TextLabel")
+    info.Name = "Info"
+    info.Size = UDim2.new(1, -20, 1, -60)
+    info.Position = UDim2.fromOffset(10, 50)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.GothamMono
+    info.TextSize = 13
+    info.TextColor3 = Color3.fromRGB(220, 220, 225)
+    info.TextXAlignment = Enum.TextXAlignment.Left
+    info.TextYAlignment = Enum.TextYAlignment.Top
+    info.TextWrapped = true
+    info.Parent = frame
+    
+    updateDisplay()
 end
 
 ------------------------------------------------------------
@@ -227,12 +208,7 @@ local function measure()
     state.previousYaw, state.previousPitch = getCameraAngles()
 
     if info then
-        info.Text = [[
-MEDINDO...
-
-Mova o mouse suavemente
-por 2 segundos...
-]]
+        info.Text = "MEDINDO...\n\nMova o mouse suavemente\npor 2 segundos..."
     end
 
     notify("Medição iniciada.")
@@ -250,14 +226,7 @@ por 2 segundos...
 
     if state.mouseDistance < MIN_MOUSE_DISTANCE then
         if info then
-            info.Text = [[
-FALHOU: Movimento insuficiente!
-
-Mova o mouse mais durante
-a medição.
-
-F6 para tentar novamente.
-]]
+            info.Text = "FALHOU: Movimento insuficiente!\n\nMova o mouse mais durante\na medição.\n\nF6 para tentar novamente."
         end
         notify("Movimento insuficiente.")
         return
@@ -279,7 +248,7 @@ F6 para tentar novamente.
         print("response =", response)
     end
 
-    notify("Medição concluída. Anote o valor de Resposta!")
+    notify("Medição concluída!")
 end
 
 ------------------------------------------------------------
