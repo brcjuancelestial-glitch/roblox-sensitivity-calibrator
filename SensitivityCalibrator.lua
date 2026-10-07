@@ -41,65 +41,60 @@ local state = {
     gameB = nil,  -- { mouseDistance, cameraDegrees, response }
 }
 
+-- Referências à UI (serão preenchidas na inicialização)
+local gui = nil
+local info = nil
+
 ------------------------------------------------------------
--- GUI
+-- CRIAR GUI
 ------------------------------------------------------------
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "SensitivityCalibrator"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+local function createGui()
+    if gui then return end
+    
+    gui = Instance.new("ScreenGui")
+    gui.Name = "SensitivityCalibrator"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Name = "Main"
-frame.Size = UDim2.fromOffset(420, 360)
-frame.Position = UDim2.new(0, 20, 0.5, -180)
-frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-frame.BackgroundTransparency = 0.08
-frame.BorderSizePixel = 0
-frame.Parent = gui
+    local frame = Instance.new("Frame")
+    frame.Name = "Main"
+    frame.Size = UDim2.fromOffset(420, 380)
+    frame.Position = UDim2.new(0, 20, 0.5, -190)
+    frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    frame.BackgroundTransparency = 0.08
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = frame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -20, 0, 36)
-title.Position = UDim2.fromOffset(10, 10)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Text = "ROBLOX SENSITIVITY METER"
-title.Parent = frame
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 36)
+    title.Position = UDim2.fromOffset(10, 10)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = "ROBLOX SENSITIVITY METER"
+    title.Parent = frame
 
-local info = Instance.new("TextLabel")
-info.Size = UDim2.new(1, -20, 1, -56)
-info.Position = UDim2.fromOffset(10, 50)
-info.BackgroundTransparency = 1
-info.Font = Enum.Font.GothamMono
-info.TextSize = 13
-info.TextColor3 = Color3.fromRGB(220, 220, 225)
-info.TextXAlignment = Enum.TextXAlignment.Left
-info.TextYAlignment = Enum.TextYAlignment.Top
-info.TextWrapped = true
-info.Text = [[
-Jogo A (referência)
-Mouse:       aguardando...
-Câmera:      aguardando...
-Resposta:    aguardando...
-
-Jogo B (atual)
-Mouse:       aguardando...
-Câmera:      aguardando...
-Resposta:    aguardando...
-
-Multiplicador: —
-Diferença:     —
-
-Pressione F6 para medir
-]]
-info.Parent = frame
+    info = Instance.new("TextLabel")
+    info.Name = "Info"
+    info.Size = UDim2.new(1, -20, 1, -56)
+    info.Position = UDim2.fromOffset(10, 50)
+    info.BackgroundTransparency = 1
+    info.Font = Enum.Font.GothamMono
+    info.TextSize = 12
+    info.TextColor3 = Color3.fromRGB(220, 220, 225)
+    info.TextXAlignment = Enum.TextXAlignment.Left
+    info.TextYAlignment = Enum.TextYAlignment.Top
+    info.TextWrapped = true
+    info.Parent = frame
+    
+    updateDisplay()
+end
 
 ------------------------------------------------------------
 -- UTILITÁRIOS
@@ -144,6 +139,8 @@ local function getCameraAngles()
 end
 
 local function updateDisplay()
+    if not info then return end
+    
     local lineA_mouse = "aguardando..."
     local lineA_camera = "aguardando..."
     local lineA_response = "aguardando..."
@@ -194,6 +191,7 @@ Multiplicador: %s
 Diferença:     %s%s
 
 Pressione F6 para medir
+F8 para limpar
 ]],
         lineA_mouse,
         lineA_camera,
@@ -269,23 +267,14 @@ local function measure()
     state.cameraDegrees = 0
     state.previousYaw, state.previousPitch = getCameraAngles()
 
-    info.Text = [[
-Jogo A (referência)
-Mouse:       medindo...
-Câmera:      medindo...
-Resposta:    medindo...
-
-Jogo B (atual)
-Mouse:       aguardando...
-Câmera:      aguardando...
-Resposta:    aguardando...
-
-Multiplicador: —
-Diferença:     —
+    if info then
+        info.Text = [[
+MEDINDO...
 
 Mova o mouse suavemente
 por 2 segundos...
 ]]
+    end
 
     notify("Medição iniciada.")
 
@@ -301,23 +290,16 @@ por 2 segundos...
     state.measuring = false
 
     if state.mouseDistance < MIN_MOUSE_DISTANCE then
-        info.Text = [[
-Jogo A (referência)
-Mouse:       FALHOU
-Câmera:      —
-Resposta:    —
+        if info then
+            info.Text = [[
+FALHOU: Movimento insuficiente!
 
-Jogo B (atual)
-Mouse:       aguardando...
-Câmera:      aguardando...
-Resposta:    aguardando...
+Mova o mouse mais durante
+a medição.
 
-Multiplicador: —
-Diferença:     —
-
-Mova o mouse mais!
 Pressione F6 novamente.
 ]]
+        end
         notify("Movimento insuficiente.")
         return
     end
@@ -379,7 +361,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 ------------------------------------------------------------
--- TEXTO INICIAL
+-- INICIALIZAÇÃO
 ------------------------------------------------------------
 
-updateDisplay()
+-- Aguardar que o PlayerGui esteja pronto e criar a GUI
+task.wait(0.1)
+createGui()
