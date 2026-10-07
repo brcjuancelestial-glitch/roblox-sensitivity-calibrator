@@ -6,16 +6,10 @@
     COMO USAR:
     1. Pressione F6 para fazer uma medição
     2. Mova o mouse suavemente por 2 segundos
-    3. Seu resultado aparece em "Jogo A (referência)"
-    4. Vá para outro jogo
-    5. Pressione F6 novamente
-    6. O resultado aparece em "Jogo B (atual)"
-    7. Veja quanto você precisa ajustar a sensibilidade
-
-    EXEMPLO:
-    Se Jogo A = 0.5004°/pixel
-    E Jogo B = 0.4001°/pixel
-    Então você coloca: sensibilidade × 1.25 no Jogo B
+    3. Veja o resultado da medição
+    4. Anote o valor de "Resposta"
+    5. Vá para outro jogo e repita
+    6. Compare os valores manualmente
 ]]
 
 local Players = game:GetService("Players")
@@ -37,11 +31,10 @@ local state = {
     previousYaw = nil,
     previousPitch = nil,
     
-    gameA = nil,  -- { mouseDistance, cameraDegrees, response }
-    gameB = nil,  -- { mouseDistance, cameraDegrees, response }
+    measurement = nil,  -- { mouseDistance, cameraDegrees, response }
 }
 
--- Referências à UI (serão preenchidas na inicialização)
+-- Referências à UI
 local gui = nil
 local info = nil
 
@@ -59,8 +52,8 @@ local function createGui()
 
     local frame = Instance.new("Frame")
     frame.Name = "Main"
-    frame.Size = UDim2.fromOffset(420, 380)
-    frame.Position = UDim2.new(0, 20, 0.5, -190)
+    frame.Size = UDim2.fromOffset(380, 220)
+    frame.Position = UDim2.new(0, 20, 0.5, -110)
     frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
     frame.BackgroundTransparency = 0.08
     frame.BorderSizePixel = 0
@@ -77,7 +70,7 @@ local function createGui()
     title.Font = Enum.Font.GothamBold
     title.TextSize = 18
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "ROBLOX SENSITIVITY METER"
+    title.Text = "SENSITIVITY METER"
     title.Parent = frame
 
     info = Instance.new("TextLabel")
@@ -86,7 +79,7 @@ local function createGui()
     info.Position = UDim2.fromOffset(10, 50)
     info.BackgroundTransparency = 1
     info.Font = Enum.Font.GothamMono
-    info.TextSize = 12
+    info.TextSize = 13
     info.TextColor3 = Color3.fromRGB(220, 220, 225)
     info.TextXAlignment = Enum.TextXAlignment.Left
     info.TextYAlignment = Enum.TextYAlignment.Top
@@ -141,68 +134,34 @@ end
 local function updateDisplay()
     if not info then return end
     
-    local lineA_mouse = "aguardando..."
-    local lineA_camera = "aguardando..."
-    local lineA_response = "aguardando..."
+    if state.measurement then
+        info.Text = string.format(
+            [[
+Mouse:       %.0f px
+Câmera:      %.1f°
+Resposta:    %.6f °/px
 
-    if state.gameA then
-        lineA_mouse = string.format("%.0f px", state.gameA.mouseDistance)
-        lineA_camera = string.format("%.1f°", state.gameA.cameraDegrees)
-        lineA_response = string.format("%.4f", state.gameA.response)
-    end
+F6 = nova medição
+F8 = limpar
 
-    local lineB_mouse = "aguardando..."
-    local lineB_camera = "aguardando..."
-    local lineB_response = "aguardando..."
-
-    if state.gameB then
-        lineB_mouse = string.format("%.0f px", state.gameB.mouseDistance)
-        lineB_camera = string.format("%.1f°", state.gameB.cameraDegrees)
-        lineB_response = string.format("%.4f", state.gameB.response)
-    end
-
-    local multiplierText = "—"
-    local differenceText = "—"
-    local adjustmentText = ""
-
-    if state.gameA and state.gameB then
-        local multiplier = state.gameA.response / state.gameB.response
-        local percent = (multiplier - 1) * 100
-        multiplierText = string.format("%.3fx", multiplier)
-        differenceText = string.format("%.1f%%", percent)
-        
-        local adjustment = state.gameB.response / state.gameA.response
-        adjustmentText = string.format("\n\nPara igualar ao Jogo A:\nSensibilidade × %.3f", adjustment)
-    end
-
-    info.Text = string.format(
-        [[
-Jogo A (referência)
-Mouse:       %s
-Câmera:      %s
-Resposta:    %s
-
-Jogo B (atual)
-Mouse:       %s
-Câmera:      %s
-Resposta:    %s
-
-Multiplicador: %s
-Diferença:     %s%s
-
-Pressione F6 para medir
-F8 para limpar
+Anote este valor e compare
+com outros jogos.
 ]],
-        lineA_mouse,
-        lineA_camera,
-        lineA_response,
-        lineB_mouse,
-        lineB_camera,
-        lineB_response,
-        multiplierText,
-        differenceText,
-        adjustmentText
-    )
+            state.measurement.mouseDistance,
+            state.measurement.cameraDegrees,
+            state.measurement.response
+        )
+    else
+        info.Text = [[
+Aguardando medição...
+
+F6 = iniciar medição
+
+Mova o mouse suavemente
+por 2 segundos durante
+a medição.
+]]
+    end
 end
 
 ------------------------------------------------------------
@@ -297,7 +256,7 @@ FALHOU: Movimento insuficiente!
 Mova o mouse mais durante
 a medição.
 
-Pressione F6 novamente.
+F6 para tentar novamente.
 ]]
         end
         notify("Movimento insuficiente.")
@@ -306,21 +265,11 @@ Pressione F6 novamente.
 
     local response = state.cameraDegrees / state.mouseDistance
 
-    -- Se gameA está preenchido, nova medição vai para gameB
-    -- Senão, vai para gameA
-    if state.gameA then
-        state.gameB = {
-            mouseDistance = state.mouseDistance,
-            cameraDegrees = state.cameraDegrees,
-            response = response,
-        }
-    else
-        state.gameA = {
-            mouseDistance = state.mouseDistance,
-            cameraDegrees = state.cameraDegrees,
-            response = response,
-        }
-    end
+    state.measurement = {
+        mouseDistance = state.mouseDistance,
+        cameraDegrees = state.cameraDegrees,
+        response = response,
+    }
 
     updateDisplay()
 
@@ -330,7 +279,7 @@ Pressione F6 novamente.
         print("response =", response)
     end
 
-    notify("Medição concluída.")
+    notify("Medição concluída. Anote o valor de Resposta!")
 end
 
 ------------------------------------------------------------
@@ -338,10 +287,9 @@ end
 ------------------------------------------------------------
 
 local function clearResults()
-    state.gameA = nil
-    state.gameB = nil
+    state.measurement = nil
     updateDisplay()
-    notify("Resultados apagados.")
+    notify("Medição apagada.")
 end
 
 ------------------------------------------------------------
@@ -364,6 +312,5 @@ end)
 -- INICIALIZAÇÃO
 ------------------------------------------------------------
 
--- Aguardar que o PlayerGui esteja pronto e criar a GUI
 task.wait(0.1)
 createGui()
